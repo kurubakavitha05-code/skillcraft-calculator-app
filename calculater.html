@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SkillCraft — Task 02 Alt · Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #08060f;
+    --surface: #110f1d;
+    --panel: #16132a;
+    --accent: #a78bfa;
+    --accent2: #f472b6;
+    --op: #1e1a35;
+    --op-hover: #2a2548;
+    --num: #13111f;
+    --num-hover: #1e1b30;
+    --eq: linear-gradient(135deg, #a78bfa, #f472b6);
+    --text: #f0eeff;
+    --muted: #6b6490;
+    --border: rgba(255,255,255,0.07);
+    --display-bg: #0d0b18;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    font-family: 'DM Sans', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -100px; right: 5%;
+    width: 350px; height: 350px;
+    background: radial-gradient(circle, rgba(244,114,182,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  header { text-align: center; }
+  .tag {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-top: 0.3rem;
+  }
+
+  /* calculator card */
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    overflow: hidden;
+    width: 340px;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  /* display */
+  .display {
+    background: var(--display-bg);
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .display::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent);
+  }
+
+  .expression {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--muted);
+    min-height: 1.3rem;
+    word-break: break-all;
+    text-align: right;
+    transition: opacity 0.2s;
+  }
+
+  .result {
+    font-family: 'DM Mono', monospace;
+    font-size: 2.8rem;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.1;
+    word-break: break-all;
+    text-align: right;
+    transition: font-size 0.2s;
+    margin-top: 0.2rem;
+  }
+
+  .result.shrink { font-size: 1.8rem; }
+  .result.error { color: #f87171; font-size: 1.4rem; }
+
+  /* keyboard hint */
+  .kb-hint {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    padding: 0.4rem 1.5rem;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+
+  /* buttons */
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .btn {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    height: 72px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s, color 0.15s;
+    position: relative;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.92); }
+
+  .btn-num {
+    background: var(--num);
+    color: var(--text);
+    font-size: 1.15rem;
+  }
+  .btn-num:hover { background: var(--num-hover); }
+
+  .btn-op {
+    background: var(--op);
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+  .btn-op:hover { background: var(--op-hover); }
+
+  .btn-clear {
+    background: rgba(248,113,113,0.08);
+    color: #f87171;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+  }
+  .btn-clear:hover { background: rgba(248,113,113,0.15); }
+
+  .btn-sign {
+    background: var(--op);
+    color: var(--muted);
+    font-size: 1.1rem;
+  }
+  .btn-sign:hover { background: var(--op-hover); color: var(--text); }
+
+  .btn-pct {
+    background: var(--op);
+    color: var(--muted);
+    font-size: 1.1rem;
+  }
+  .btn-pct:hover { background: var(--op-hover); color: var(--text); }
+
+  .btn-eq {
+    background: var(--eq);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    grid-row: span 2;
+    height: 100%;
+    min-height: 145px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .btn-eq:hover { filter: brightness(1.1); }
+
+  .btn-zero {
+    grid-column: span 2;
+    justify-content: flex-start;
+    padding-left: 1.5rem;
+    font-size: 1.15rem;
+  }
+
+  /* eq wrapper for spanning */
+  .eq-wrapper {
+    grid-column: 4;
+    grid-row: 5 / 7;
+    display: flex;
+  }
+  .eq-wrapper .btn { width: 100%; height: 100%; }
+
+  /* active op highlight */
+  .btn-op.active {
+    background: var(--accent);
+    color: #08060f;
+  }
+
+  /* history panel */
+  .history {
+    width: 340px;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+  }
+  .history-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .clear-hist {
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    transition: color 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .clear-hist:hover { color: #f87171; }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 140px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .hist-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: right;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255,255,255,0.025);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    animation: fadeIn 0.2s ease;
+  }
+  .hist-item:hover { background: rgba(167,139,250,0.08); color: var(--text); }
+  .hist-item span { color: var(--accent); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  footer {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="tag">SkillCraft · Task 02 Alternative</div>
+    <h1>Calculator</h1>
+  </header>
+
+  <div class="calc">
+    <div class="display">
+      <div class="expression" id="expression"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="kb-hint">Keyboard supported · Esc = clear</div>
+
+    <!-- GRID: 6 rows × 4 cols -->
+    <div class="btn-grid" id="btnGrid">
+      <!-- Row 1 -->
+      <button class="btn btn-clear"  onclick="clearAll()">AC</button>
+      <button class="btn btn-sign"   onclick="toggleSign()">+/−</button>
+      <button class="btn btn-pct"    onclick="percent()">%</button>
+      <button class="btn btn-op"     onclick="setOp('/')">÷</button>
+      <!-- Row 2 -->
+      <button class="btn btn-num"    onclick="input('7')">7</button>
+      <button class="btn btn-num"    onclick="input('8')">8</button>
+      <button class="btn btn-num"    onclick="input('9')">9</button>
+      <button class="btn btn-op"     onclick="setOp('*')">×</button>
+      <!-- Row 3 -->
+      <button class="btn btn-num"    onclick="input('4')">4</button>
+      <button class="btn btn-num"    onclick="input('5')">5</button>
+      <button class="btn btn-num"    onclick="input('6')">6</button>
+      <button class="btn btn-op"     onclick="setOp('-')">−</button>
+      <!-- Row 4 -->
+      <button class="btn btn-num"    onclick="input('1')">1</button>
+      <button class="btn btn-num"    onclick="input('2')">2</button>
+      <button class="btn btn-num"    onclick="input('3')">3</button>
+      <button class="btn btn-op"     onclick="setOp('+')">+</button>
+      <!-- Row 5 -->
+      <button class="btn btn-num btn-zero" onclick="input('0')">0</button>
+      <button class="btn btn-num"    onclick="inputDot()">.</button>
+      <button class="btn btn-eq"     onclick="calculate()">=</button>
+    </div>
+  </div>
+
+  <div class="history">
+    <div class="history-header">
+      <span class="history-title">History</span>
+      <button class="clear-hist" onclick="clearHistory()">Clear</button>
+    </div>
+    <div class="history-list" id="historyList">
+    </div>
+  </div>
+
+  <footer>SkillCraft Technology Internship · Calculator App</footer>
+</div>
+
+<script>
+  // ── STATE ──
+  let current = '0';
+  let prev = '';
+  let operator = null;
+  let shouldReplace = false;
+  let history = [];
+  let activeOpBtn = null;
+
+  // ── DOM ──
+  const resultEl = document.getElementById('result');
+  const exprEl   = document.getElementById('expression');
+  const histList = document.getElementById('historyList');
+
+  // ── DISPLAY ──
+  function updateDisplay() {
+    // shrink for long numbers
+    resultEl.classList.remove('shrink', 'error');
+    if (current.length > 9) resultEl.classList.add('shrink');
+    resultEl.textContent = formatNum(current);
+  }
+
+  function formatNum(val) {
+    if (val === 'Error') return 'Error';
+    const num = parseFloat(val);
+    if (isNaN(num)) return val;
+    // If integer and not too large, format with commas
+    if (!val.includes('.') && Math.abs(num) < 1e12) {
+      return num.toLocaleString('en-US', { maximumFractionDigits: 10 });
+    }
+    return val;
+  }
+
+  function setExpression(str) { exprEl.textContent = str; }
+
+  // ── INPUT ──
+  function input(digit) {
+    clearActiveOp();
+    if (shouldReplace) {
+      current = digit;
+      shouldReplace = false;
+    } else {
+      if (current === '0' && digit !== '.') current = digit;
+      else if (current.length < 15) current += digit;
+    }
+    updateDisplay();
+  }
+
+  function inputDot() {
+    clearActiveOp();
+    if (shouldReplace) { current = '0.'; shouldReplace = false; }
+    else if (!current.includes('.')) current += '.';
+    updateDisplay();
+  }
+
+  function toggleSign() {
+    if (current === '0' || current === 'Error') return;
+    current = current.startsWith('-') ? current.slice(1) : '-' + current;
+    updateDisplay();
+  }
+
+  function percent() {
+    if (current === 'Error') return;
+    current = String(parseFloat(current) / 100);
+    updateDisplay();
+  }
+
+  // ── OPERATIONS ──
+  function setOp(op) {
+    if (current === 'Error') return;
+
+    // chain: compute first if we already have an op
+    if (operator && !shouldReplace) compute();
+
+    prev = current;
+    operator = op;
+    shouldReplace = true;
+
+    const opSymbol = { '+': '+', '-': '−', '*': '×', '/': '÷' }[op];
+    setExpression(`${formatNum(prev)} ${opSymbol}`);
+
+    // highlight active op button
+    clearActiveOp();
+    const opBtns = document.querySelectorAll('.btn-op');
+    opBtns.forEach(b => {
+      if (b.textContent === opSymbol) {
+        b.classList.add('active');
+        activeOpBtn = b;
+      }
+    });
+  }
+
+  function clearActiveOp() {
+    if (activeOpBtn) { activeOpBtn.classList.remove('active'); activeOpBtn = null; }
+  }
+
+  function compute() {
+    if (!operator || prev === '') return;
+
+    const a = parseFloat(prev);
+    const b = parseFloat(current);
+    const opSymbol = { '+': '+', '-': '−', '*': '×', '/': '÷' }[operator];
+    const expression = `${formatNum(prev)} ${opSymbol} ${formatNum(current)} =`;
+
+    let result;
+    try {
+      if (operator === '/' && b === 0) throw new Error('Division by zero');
+      if (operator === '+') result = a + b;
+      else if (operator === '-') result = a - b;
+      else if (operator === '*') result = a * b;
+      else if (operator === '/') result = a / b;
+
+      result = parseFloat(result.toPrecision(12));
+      if (!isFinite(result)) throw new Error('Overflow');
+    } catch {
+      current = 'Error';
+      operator = null; prev = '';
+      resultEl.classList.add('error');
+      setExpression('');
+      resultEl.textContent = 'Error';
+      return;
+    }
+
+    addHistory(expression, result);
+    setExpression(expression);
+    current = String(result);
+    operator = null; prev = '';
+    updateDisplay();
+  }
+
+  function calculate() {
+    clearActiveOp();
+    compute();
+    shouldReplace = true;
+  }
+
+  // ── CLEAR ──
+  function clearAll() {
+    current = '0'; prev = ''; operator = null; shouldReplace = false;
+    clearActiveOp();
+    setExpression('');
+    resultEl.classList.remove('error', 'shrink');
+    updateDisplay();
+  }
+
+  // ── HISTORY ──
+  function addHistory(expr, result) {
+    history.unshift({ expr, result });
+    if (history.length > 20) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) {
+      histList.innerHTML = '';
+      return;
+    }
+    histList.innerHTML = history.map((h, i) =>
+      `<div class="hist-item" onclick="useHistory(${i})">${h.expr} <span>${formatNum(String(h.result))}</span></div>`
+    ).join('');
+  }
+
+  function useHistory(i) {
+    current = String(history[i].result);
+    shouldReplace = true;
+    clearActiveOp();
+    setExpression('');
+    updateDisplay();
+  }
+
+  function clearHistory() { history = []; renderHistory(); }
+
+  // ── KEYBOARD ──
+  document.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k >= '0' && k <= '9') { e.preventDefault(); input(k); }
+    else if (k === '.') { e.preventDefault(); inputDot(); }
+    else if (k === '+') { e.preventDefault(); setOp('+'); }
+    else if (k === '-') { e.preventDefault(); setOp('-'); }
+    else if (k === '*') { e.preventDefault(); setOp('*'); }
+    else if (k === '/') { e.preventDefault(); setOp('/'); }
+    else if (k === 'Enter' || k === '=') { e.preventDefault(); calculate(); }
+    else if (k === 'Escape') { e.preventDefault(); clearAll(); }
+    else if (k === 'Backspace') {
+      e.preventDefault();
+      if (current.length > 1 && !shouldReplace && current !== 'Error') {
+        current = current.slice(0, -1);
+        if (current === '-') current = '0';
+        updateDisplay();
+      } else { clearAll(); }
+    }
+    else if (k === '%') { e.preventDefault(); percent(); }
+  });
+</script>
+</body>
+</html>
